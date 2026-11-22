@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolt Staff Clock (Copy)</title>
+<style>
+:root{
+  --bg:#f5f6f8;--surface:#fff;--surface2:#f0f1f4;--border:#dde1e6;
+  --text:#1b1f27;--muted:#6b7280;--accent:#2563eb;--accent-text:#fff;--good:#16a34a;--warn:#f59e0b;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13151a;--surface:#1c1f26;--surface2:#20242c;--border:#2c313b;
+  --text:#e8eaed;--muted:#9aa2b1;--accent:#5b8def;--accent-text:#0b0e14;color-scheme:dark;}}
+:root[data-theme="dark"]{--bg:#13151a;--surface:#1c1f26;--surface2:#20242c;--border:#2c313b;--text:#e8eaed;--muted:#9aa2b1;--accent:#5b8def;--accent-text:#0b0e14;color-scheme:dark;}
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;height:100%;}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 40px;}
+h1{font-size:18px;margin:4px 0 12px;}
+.tabs{display:flex;gap:8px;margin-bottom:14px;}
+.tab{flex:1;padding:9px;text-align:center;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);}
+.tab.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:4px;}
+select,input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px;font-size:14px;}
+button{border:none;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;}
+.btn-primary{background:var(--accent);color:var(--accent-text);width:100%;}
+.btn-out{background:var(--warn);color:#1b1f27;width:100%;}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-sm{padding:5px 9px;font-size:12px;border-radius:7px;}
+.status{text-align:center;padding:14px 0;}
+.status .big{font-size:15px;font-weight:600;margin-bottom:10px;}
+.muted{color:var(--muted);font-size:12px;}
+.tbl-scroll{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-top:8px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px;}
+th,td{padding:6px 7px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+th{background:var(--surface2);font-size:10.5px;text-transform:uppercase;color:var(--muted);}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px;}
+.sum-box{background:var(--surface2);border-radius:9px;padding:9px 11px;}
+.sum-box .label{font-size:10.5px;color:var(--muted);text-transform:uppercase;}
+.sum-box .value{font-size:15px;font-weight:700;}
+.total-box{background:var(--accent);color:var(--accent-text);}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;}
+.row .field{flex:1 1 110px;}
+.theme-toggle{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:8px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 9px;font-size:10px;z-index:20;cursor:pointer;color:var(--text);}
+.hidden{display:none;}
+.hint{font-size:12px;color:var(--muted);margin-top:10px;text-align:center;}
+h3{font-size:13px;margin:14px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeBtn">Theme</button>
+<div class="wrap">
+  <h1>🏎️ Evolt Staff Clock</h1>
+  <div id="loadingMsg" class="hint">Loading…</div>
+  <div id="app" class="hidden">
+    <div class="tabs">
+      <div class="tab active" id="tabClock">Clock In/Out</div>
+      <div class="tab hidden" id="tabDash">Dashboard</div>
+    </div>
+
+    <div id="viewClock">
+      <div class="card">
+        <label>Who are you?</label>
+        <select id="staffSelect"><option value="">Select your name…</option></select>
+        <div id="clockStatus" class="status hidden"></div>
+      </div>
+    </div>
+
+    <div id="viewDash" class="hidden">
+      <div class="card">
+        <div class="row">
+          <div class="field"><label>Month</label><input type="month" id="monthPick"></div>
+          <button class="btn-ghost btn-sm" id="refreshBtn">↻ Refresh</button>
+          <button class="btn-ghost btn-sm" id="exportBtn">⬇ Export CSV</button>
+        </div>
+        <div class="tbl-scroll">
+          <table><thead><tr><th>Staff</th><th>Date</th><th>In</th><th>Out</th><th>Break In</th><th>Break Out</th><th>Hrs</th><th>PH</th><th></th></tr></thead>
+          <tbody id="entryRows"></tbody></table>
+        </div>
+        <div class="summary" id="summaryBoxes"></div>
+      </div>
+      <div class="card">
+        <h3>Manage Staff</h3>
+        <div id="staffMgmt"></div>
+        <button class="btn-ghost btn-sm" id="addStaffBtn" style="margin-top:8px;">+ Add Staff</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let db=null, userCap=null, isAdmin=false;
+let staffList=[];
+let lastRows=[], lastByStaff={}, lastMonth="";
+
+function pad(n){ return String(n).padStart(2,"0"); }
+function localDateStr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function localTimeStr(d){ return pad(d.getHours())+":"+pad(d.getMinutes()); }
+function hoursBetween(entry){
+  const tin = entry.timeIn, tout = entry.timeOut;
+  if(!tin||!tout) return 0;
+  const [h1,m1]=tin.split(":").map(Number), [h2,m2]=tout.split(":").map(Number);
+  let diff=(h2*60+m2)-(h1*60+m1);
+  if(diff<=0) diff+=24*60;
+  let breakMinutes = 0;
+  if(entry.breakStart && entry.breakEnd){
+    const [b1,c1]=entry.breakStart.split(":").map(Number), [b2,c2]=entry.breakEnd.split(":").map(Number);
+    let bdiff=(b2*60+c2)-(b1*60+c1);
+    if(bdiff<=0) bdiff+=24*60;
+    breakMinutes = bdiff;
+  } else if(entry.breakMin){
+    breakMinutes = Number(entry.breakMin)||0;
+  }
+  diff -= breakMinutes;
+  return diff>0? Math.round(diff/60*100)/100 : 0;
+}
+
+async function init(){
+  db = await claude.use("db");
+  userCap = await claude.use("user");
+  if(!db){
+    document.getElementById("loadingMsg").textContent = "This page needs to be opened through Claude with access granted — ask the admin to share the link with you.";
+    return;
+  }
+  isAdmin = userCap ? (userCap.canEdit ? userCap.canEdit() : false) : false;
+  document.getElementById("loadingMsg").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  if(isAdmin) document.getElementById("tabDash").classList.remove("hidden");
+
+  await loadStaff();
+  const now = new Date();
+  document.getElementById("monthPick").value = now.getFullYear()+"-"+pad(now.getMonth()+1);
+
+  document.getElementById("tabClock").onclick=()=>switchTab("clock");
+  document.getElementById("tabDash").onclick=()=>switchTab("dash");
+  document.getElementById("staffSelect").onchange=onStaffPick;
+  document.getElementById("refreshBtn").onclick=loadDashboard;
+  document.getElementById("monthPick").onchange=loadDashboard;
+  document.getElementById("exportBtn").onclick=exportCSV;
+  document.getElementById("addStaffBtn").onclick=addStaffRow;
+
+  const lastId = localStorage.getItem("evolt_last_staff");
+  if(lastId){ document.getElementById("staffSelect").value=lastId; onStaffPick(); }
+
+  if(isAdmin) loadDashboard();
+}
+
+function switchTab(which){
+  document.getElementById("tabClock").classList.toggle("active", which==="clock");
+  document.getElementById("tabDash").classList.toggle("active", which==="dash");
+  document.getElementById("viewClock").classList.toggle("hidden", which!=="clock");
+  document.getElementById("viewDash").classList.toggle("hidden", which!=="dash");
+  if(which==="dash") loadDashboard();
+}
+
+async function loadStaff(){
+  const snap = await db.collection("staff").get();
+  staffList = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(s=>s.active!==false);
+  staffList.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  const sel = document.getElementById("staffSelect");
+  sel.innerHTML = '<option value="">Select your name…</option>' +
+    staffList.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");
+}
+
+async function onStaffPick(){
+  const id = document.getElementById("staffSelect").value;
+  const box = document.getElementById("clockStatus");
+  if(!id){ box.classList.add("hidden"); return; }
+  localStorage.setItem("evolt_last_staff", id);
+  box.classList.remove("hidden");
+  box.innerHTML = '<div class="muted">Checking today…</div>';
+  const today = localDateStr(new Date());
+  const docId = id+"_"+today;
+  const ref = db.doc("entries/"+docId);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : null;
+
+  if(!data || !data.timeIn){
+    box.innerHTML = `<div class="big">Ready to start your shift?</div><button class="btn-primary" id="actBtn">Clock In</button>`;
+    document.getElementById("actBtn").onclick=async()=>{
+      const staff = staffList.find(s=>s.id===id);
+      await ref.set({staffId:id, staffName:staff.name, date:today, timeIn:localTimeStr(new Date()), timeOut:null, breakStart:null, breakEnd:null, isPH:false});
+      onStaffPick();
+    };
+    return;
+  }
+  if(data.breakStart && !data.breakEnd){
+    box.innerHTML = `<div class="big">On break since ${data.breakStart} ☕</div><button class="btn-out" id="actBtn" style="width:auto;">End Break</button>`;
+    document.getElementById("actBtn").onclick=async()=>{
+      await ref.update({breakEnd: localTimeStr(new Date())});
+      onStaffPick();
+    };
+    return;
+  }
+  if(!data.timeOut){
+    const breakNote = data.breakEnd ? `<div class="muted">Break: ${data.breakStart} – ${data.breakEnd}</div>` : "";
+    box.innerHTML = `<div class="big">Clocked in at ${data.timeIn} ✅</div>${breakNote}<div class="row" style="justify-content:center;gap:8px;margin-top:8px;">${data.breakEnd?"":'<button class="btn-ghost" id="breakBtn" style="width:auto;">Start Break</button>'}<button class="btn-out" id="outBtn" style="width:auto;">Clock Out</button></div>`;
+    const bb = document.getElementById("breakBtn");
+    if(bb) bb.onclick=async()=>{ await ref.update({breakStart: localTimeStr(new Date())}); onStaffPick(); };
+    document.getElementById("outBtn").onclick=async()=>{ await ref.update({timeOut: localTimeStr(new Date())}); onStaffPick(); };
+    return;
+  }
+  const hrs = hoursBetween(data);
+  const breakInfo = data.breakStart ? ` · break ${data.breakStart}-${data.breakEnd||"?"}` : "";
+  box.innerHTML = `<div class="big">Done for today 🎉</div><div class="muted">${data.timeIn} – ${data.timeOut}${breakInfo} · ${hrs} hrs</div>`;
+}
+
+async function loadDashboard(){
+  if(!isAdmin) return;
+  const month = document.getElementById("monthPick").value;
+  if(!month) return;
+  const start = month+"-01";
+  const [y,m] = month.split("-").map(Number);
+  const end = y+"-"+pad(m+1)+"-01";
+  const snap = await db.collection("entries").where("date",">=",start).where("date","<",end).get();
+  const rows = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=> a.staffName.localeCompare(b.staffName) || a.date.localeCompare(b.date));
+
+  const tbody = document.getElementById("entryRows");
+  tbody.innerHTML = rows.map(r=>{
+    const hrs = hoursBetween(r);
+    return `<tr>
+      <td>${r.staffName}</td><td>${r.date}</td>
+      <td><input type="time" value="${r.timeIn||""}" data-id="${r.id}" data-f="timeIn" class="timeBox" style="width:80px;padding:3px;"></td>
+      <td><input type="time" value="${r.timeOut||""}" data-id="${r.id}" data-f="timeOut" class="timeBox" style="width:80px;padding:3px;"></td>
+      <td><input type="time" value="${r.breakStart||""}" data-id="${r.id}" data-f="breakStart" class="timeBox" style="width:80px;padding:3px;"></td>
+      <td><input type="time" value="${r.breakEnd||""}" data-id="${r.id}" data-f="breakEnd" class="timeBox" style="width:80px;padding:3px;"></td>
+      <td>${hrs>0?hrs.toFixed(2):"-"}</td>
+      <td><input type="checkbox" data-id="${r.id}" class="phBox" ${r.isPH?"checked":""}></td>
+      <td><button class="btn-ghost btn-sm delBtn" data-id="${r.id}">✕</button></td>
+    </tr>`;
+  }).join("") || '<tr><td colspan="9" class="muted">No entries this month yet.</td></tr>';
+
+  tbody.querySelectorAll(".phBox").forEach(cb=>{
+    cb.onchange=async()=>{ await db.doc("entries/"+cb.dataset.id).update({isPH:cb.checked}); loadDashboard(); };
+  });
+  tbody.querySelectorAll(".timeBox").forEach(inp=>{
+    inp.onchange=async()=>{ const upd={}; upd[inp.dataset.f]=inp.value||null; await db.doc("entries/"+inp.dataset.id).update(upd); loadDashboard(); };
+  });
+  tbody.querySelectorAll(".delBtn").forEach(b=>{
+    b.onclick=async()=>{ if(confirm("Delete this entry?")){ await db.doc("entries/"+b.dataset.id).delete(); loadDashboard(); } };
+  });
+
+  // Summary per staff
+  const byStaff = {};
+  rows.forEach(r=>{
+    const staff = staffList.find(s=>s.id===r.staffId) || {rate:10, phRate:15};
+    const hrs = hoursBetween(r);
+    if(!byStaff[r.staffId]) byStaff[r.staffId]={name:r.staffName, normal:0, ph:0, pay:0};
+    if(r.isPH){ byStaff[r.staffId].ph+=hrs; byStaff[r.staffId].pay += hrs*(staff.phRate||15); }
+    else { byStaff[r.staffId].normal+=hrs; byStaff[r.staffId].pay += hrs*(staff.rate||10); }
+  });
+  let grand=0;
+  const boxes = Object.values(byStaff).map(s=>{
+    grand+=s.pay;
+    return `<div class="sum-box"><div class="label">${s.name}</div><div class="value">RM ${s.pay.toFixed(2)}</div><div class="muted">${s.normal.toFixed(1)}h normal / ${s.ph.toFixed(1)}h PH</div></div>`;
+  }).join("");
+  document.getElementById("summaryBoxes").innerHTML = boxes + `<div class="sum-box total-box"><div class="label">Total Payroll</div><div class="value">RM ${grand.toFixed(2)}</div></div>`;
+
+  lastRows = rows; lastByStaff = byStaff; lastMonth = month;
+  renderStaffMgmt();
+}
+
+function csvEscape(v){
+  const s = String(v==null?"":v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+
+async function exportCSV(){
+  const downloads = await claude.use("downloads");
+  if(!downloads){ alert("Downloads aren't available in this view — try opening the artifact directly in Claude."); return; }
+  const lines = ["Name,Date,Time In,Time Out,Break In,Break Out,Hours,PH,Pay (RM)"];
+  lastRows.forEach(r=>{
+    const staff = staffList.find(s=>s.id===r.staffId) || {rate:10, phRate:15};
+    const hrs = hoursBetween(r);
+    const pay = hrs * (r.isPH ? (staff.phRate||15) : (staff.rate||10));
+    lines.push([r.staffName, r.date, r.timeIn||"", r.timeOut||"", r.breakStart||"", r.breakEnd||"", hrs.toFixed(2), r.isPH?"Yes":"No", pay.toFixed(2)].map(csvEscape).join(","));
+  });
+  lines.push("");
+  lines.push("Summary,,,,,,");
+  lines.push("Name,Normal Hours,PH Hours,,,,Total Pay (RM)");
+  let grand=0;
+  Object.values(lastByStaff).forEach(s=>{
+    grand+=s.pay;
+    lines.push([s.name, s.normal.toFixed(2), s.ph.toFixed(2), "", "", "", s.pay.toFixed(2)].map(csvEscape).join(","));
+  });
+  lines.push(["TOTAL PAYROLL","","","","","",grand.toFixed(2)].map(csvEscape).join(","));
+  const csv = lines.join("\n");
+  try{
+    await downloads.save({filename: "evolt-payroll-"+lastMonth+".csv", data: csv});
+  }catch(e){
+    if(e && e.code !== "declined") alert("Couldn't export: "+(e.message||e.code||e));
+  }
+}
+
+function renderStaffMgmt(){
+  const box = document.getElementById("staffMgmt");
+  box.innerHTML = staffList.map(s=>`
+    <div class="row" style="margin-bottom:8px;" data-sid="${s.id}">
+      <div class="field"><input class="s_name" value="${s.name||""}" placeholder="Name"></div>
+      <div class="field" style="flex:0 0 90px;"><input class="s_rate" type="number" step="0.01" value="${s.rate||10}" placeholder="Rate"></div>
+      <div class="field" style="flex:0 0 90px;"><input class="s_phrate" type="number" step="0.01" value="${s.phRate||15}" placeholder="PH Rate"></div>
+      <button class="btn-ghost btn-sm saveStaffBtn">Save</button>
+      <button class="btn-ghost btn-sm delStaffBtn">✕</button>
+    </div>`).join("");
+  box.querySelectorAll(".saveStaffBtn").forEach(btn=>{
+    btn.onclick=async()=>{
+      const row = btn.closest("[data-sid]"); const id=row.dataset.sid;
+      await db.doc("staff/"+id).update({
+        name: row.querySelector(".s_name").value,
+        rate: Number(row.querySelector(".s_rate").value)||10,
+        phRate: Number(row.querySelector(".s_phrate").value)||15
+      });
+      await loadStaff(); loadDashboard();
+    };
+  });
+  box.querySelectorAll(".delStaffBtn").forEach(btn=>{
+    btn.onclick=async()=>{
+      const row = btn.closest("[data-sid]"); const id=row.dataset.sid;
+      if(confirm("Remove this staff member?")){ await db.doc("staff/"+id).update({active:false}); await loadStaff(); loadDashboard(); }
+    };
+  });
+}
+
+async function addStaffRow(){
+  const name = prompt("New staff name:");
+  if(!name) return;
+  await db.collection("staff").add({name, rate:10, phRate:15, active:true});
+  await loadStaff(); loadDashboard();
+}
+
+document.getElementById("themeBtn").onclick=()=>{
+  const r=document.documentElement, cur=r.getAttribute("data-theme");
+  if(cur==="dark") r.setAttribute("data-theme","light");
+  else if(cur==="light") r.removeAttribute("data-theme");
+  else r.setAttribute("data-theme","dark");
+};
+
+init();
+</script>
+</body>
+</html>
